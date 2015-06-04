@@ -1,28 +1,70 @@
 # Capistrano::S3Archive
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/capistrano/s3_archive`. To experiment with that code, run `bin/console` for an interactive prompt.
+Capistrano::S3Archive is an extention of [Capistrano](http://www.capistranorb.com/) which enables to `set :scm, :s3_archive`.
 
-TODO: Delete this and the text above, and describe your gem
+This behaves like the [capistrano-rsync](https://github.com/moll/capistrano-rsync) except downloading sources from S3 instead of GIT by default.
+
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'capistrano-s3_archive'
+gem 'capistrano-s3_archive', github: 'komazarari/capistrano-s3_archive'
 ```
 
 And then execute:
 
     $ bundle
 
-Or install it yourself as:
+<!-- Or install it yourself as: -->
 
-    $ gem install capistrano-s3_archive
+<!--     $ gem install capistrano-s3_archive -->
 
 ## Usage
 
-TODO: Write usage instructions here
+Add this to your `Capfile`:
+
+```ruby
+require 'capistrano/s3_archive'
+```
+
+Set a S3 path containing source archives to `repo_url`. For example, if you has following tree,
+
+    s3://yourbucket/somedirectory/
+                      |- 201506011200.zip
+                      |- 201506011500.zip
+                      ...
+                      |- 201506020100.zip
+                      `- 201506030100.zip
+
+then `set :repo_url, 's3://yourbucket/somedirectory'`.
+
+Set parameters to access Amazon S3:
+
+```ruby
+set :s3_client_options, { region: 'ap-northeast-1', credentials: somecredentials }
+```
+
+And set regular capistrano options. To deploy staging:
+```
+$ bundle exec cap staging deploy
+```
+
+### Configuration
+Set parameters with `set :key, value`.
+
+#### Rsync Strategy (default)
+
+Key           | Default | Description
+--------------|---------|------------
+branch        | `latest` | The S3 Object basename to download. Support `:latest` or such as `'201506011500.zip'`.
+sort_proc     | `->(a,b) { b.key <=> a.key }` | Sort algorithm used to detect `:latest` object basename. It should be proc object for `a,b` as `Aws::S3::Object` comparing.
+rsync_options | `['-az']` | Options used to rsync.
+rsync_stage   | `tmp/deploy` | Path where to extruct your archive for staging and rsyncing. Can be both relative or absolute.
+rsync_cache   | `shared/deploy` | Path where to cache your repository on the server to avoid rsyncing from scratch each time. Can be both relative or absolute.<br> Set to `nil` if you want to disable the cache.
+s3_archive    | `tmp/archives` | Path where to download source archives. Can be both relative or absolute.
+
 
 ## Development
 
