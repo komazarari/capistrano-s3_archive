@@ -30,4 +30,4 @@ namespace :s3_archive do
   task :set_current_revision do
     set :current_revision, strategy.current_revision
   end
-end
+end unless Rake::Task.task_defined?("s3_archive:check")

@@ -23,11 +23,7 @@ And then execute:
 
 ## Usage
 
-Add this to your `Capfile`:
-
-```ruby
-require 'capistrano/s3_archive'
-```
+`set :scm, :s3_archive` in your config file.
 
 Set a S3 path containing source archives to `repo_url`. For example, if you has following tree,
 
