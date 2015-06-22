@@ -13,8 +13,14 @@ namespace :s3_archive do
 
   desc 'Extruct and stage the S3 archive in a stage directory'
   task :stage do
-    on release_roles :all do
-      strategy.stage
+    if fetch(:skip_staging, false)
+      run_locally do
+        info "Skip extructing and staging."
+      end
+    else
+      on release_roles :all do
+        strategy.stage
+      end
     end
   end
 
@@ -31,3 +37,8 @@ namespace :s3_archive do
     set :current_revision, strategy.current_revision
   end
 end unless Rake::Task.task_defined?("s3_archive:check")
+
+task :deploy_only do
+  set :skip_staging, true
+  invoke :deploy
+end
