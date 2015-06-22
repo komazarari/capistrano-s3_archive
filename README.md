@@ -57,7 +57,7 @@ Key           | Default | Description
 branch        | `latest` | The S3 Object basename to download. Support `:latest` or such as `'201506011500.zip'`.
 sort_proc     | `->(a,b) { b.key <=> a.key }` | Sort algorithm used to detect `:latest` object basename. It should be proc object for `a,b` as `Aws::S3::Object` comparing.
 rsync_options | `['-az']` | Options used to rsync.
-rsync_stage   | `tmp/deploy` | Path where to extruct your archive for staging and rsyncing. Can be both relative or absolute.
+local_cache   | `tmp/deploy` | Path where to extruct your archive on local for staging and rsyncing. Can be both relative or absolute.
 rsync_cache   | `shared/deploy` | Path where to cache your repository on the server to avoid rsyncing from scratch each time. Can be both relative or absolute.<br> Set to `nil` if you want to disable the cache.
 s3_archive    | `tmp/archives` | Path where to download source archives. Can be both relative or absolute.
 

@@ -6,8 +6,8 @@ require 'aws-sdk-core'
 
 set :rsync_options, ['-az']
 set :rsync_copy, "rsync --archive --acls --xattrs"
-set :rsync_stage, "tmp/deploy"
 set :rsync_cache, "shared/deploy"
+set :local_cache, "tmp/deploy"
 set :s3_archive, "tmp/archives"
 set :sort_proc, ->(a,b) { b.key <=> a.key }
 
@@ -20,6 +20,7 @@ module Capistrano
       def initialize(*args)
         super
         @bucket, @object_prefix = parse_s3_uri(repo_url)
+        set :local_cache_dir, "#{fetch(:local_cache)}/#{fetch(:stage)}"
       end
 
       def get_object
@@ -69,7 +70,7 @@ module Capistrano
         end
 
         def stage
-          archive_file = File.join(fetch(:s3_archive), File.basename(archive_object_key))
+          archive_file = File.join(fetch(:s3_archive), fetch(:stage).to_s, File.basename(archive_object_key))
           if not File.exist?(archive_file)
             mkdir_p(File.dirname(archive_file))
             content = get_object.body.read
@@ -80,15 +81,15 @@ module Capistrano
             context.info "#{archive_file} is found."
           end
 
-          remove_entry_secure(fetch(:rsync_stage)) if File.exist? fetch(:rsync_stage)
-          mkdir_p(fetch(:rsync_stage))
+          remove_entry_secure(fetch(:local_cache_dir)) if File.exist? fetch(:local_cache_dir)
+          mkdir_p(fetch(:local_cache_dir))
           case archive_file
           when /\.zip\Z/
             dir = archive_file.gsub(/\.zip\Z/, '')
-            cmd = "unzip -q -d #{fetch(:rsync_stage)} #{archive_file}"
+            cmd = "unzip -q -d #{fetch(:local_cache_dir)} #{archive_file}"
           when /\.tar\.gz\Z|\.tar\.bz2\Z/
             dir = archive_file.gsub(/\.tar\.gz\Z|\.tar\.bz2\Z/, '')
-            cmd = "tar xf #{archive_file} -C #{fetch(:rsync_stage)}"
+            cmd = "tar xf #{archive_file} -C #{fetch(:local_cache_dir)}"
           end
 
           run_locally do
@@ -102,7 +103,7 @@ module Capistrano
 
           rsync = ['rsync']
           rsync.concat fetch(:rsync_options)
-          rsync << fetch(:rsync_stage) + '/'
+          rsync << fetch(:local_cache_dir) + '/'
           rsync << "-e 'ssh -i #{key}'"
           rsync << "#{user}#{server.hostname}:#{rsync_cache || release_path}"
 
