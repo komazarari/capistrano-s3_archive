@@ -47,6 +47,12 @@ And set regular capistrano options. To deploy staging:
 $ bundle exec cap staging deploy
 ```
 
+Or to skip download & extruct archive and deploy local files:
+```
+$ bundle exec cap staging deploy_only
+```
+
+
 ### Configuration
 Set parameters with `set :key, value`.
 
