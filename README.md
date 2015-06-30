@@ -10,7 +10,7 @@ This behaves like the [capistrano-rsync](https://github.com/moll/capistrano-rsyn
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'capistrano-s3_archive', github: 'komazarari/capistrano-s3_archive'
+gem 'capistrano-s3_archive'
 ```
 
 And then execute:
