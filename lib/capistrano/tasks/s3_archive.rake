@@ -13,12 +13,10 @@ namespace :s3_archive do
 
   desc 'Extruct and stage the S3 archive in a stage directory'
   task :stage do
-    if fetch(:skip_staging, false)
-      run_locally do
+    run_locally do
+      if fetch(:skip_staging, false)
         info "Skip extructing and staging."
-      end
-    else
-      on release_roles :all do
+      else
         strategy.stage
       end
     end
