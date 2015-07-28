@@ -1,5 +1,5 @@
 module Capistrano
   module S3Archive
-    VERSION = "0.1.2"
+    VERSION = "0.2.0"
   end
 end
