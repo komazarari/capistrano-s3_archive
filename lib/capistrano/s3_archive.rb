@@ -100,11 +100,12 @@ module Capistrano
         def release(server = context.host)
           user = server.user + '@' unless server.user.nil?
           key  = server.keys.first || Array(server.ssh_options[:keys]).first
+          ssh_port_option = server.port.nil? ? '' : "-p #{server.port}"
 
           rsync = ['rsync']
           rsync.concat fetch(:rsync_options)
           rsync << fetch(:local_cache_dir) + '/'
-          rsync << "-e 'ssh -i #{key}'"
+          rsync << "-e 'ssh -i #{key} #{ssh_port_option}'"
           rsync << "#{user}#{server.hostname}:#{rsync_cache || release_path}"
 
           run_locally do
