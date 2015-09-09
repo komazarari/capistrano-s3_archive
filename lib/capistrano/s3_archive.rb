@@ -65,35 +65,47 @@ module Capistrano
       ### Default strategy
       private
       module RsyncStrategy
+        class MissingSSHKyesError < StandardError; end
+        class ResourceBusyError < StandardError; end
+
         def check
           list_objects(false)
+          ssh_key  = context.host.keys.first || Array(context.host.ssh_options[:keys]).first
+          if ssh_key.nil?
+            fail MissingSSHKyesError, "#{RsyncStrategy} only supports publickey authentication. Please set #{context.host.hostname}.keys or ssh_options."
+          end
         end
 
         def stage
-          archive_file = File.join(fetch(:s3_archive), fetch(:stage).to_s, File.basename(archive_object_key))
-          if not File.exist?(archive_file)
-            mkdir_p(File.dirname(archive_file))
-            content = get_object.body.read
-            File.open(archive_file, 'w') do |f|
-              f.write(content)
+          stage_lock do
+            archive_file = File.join(fetch(:s3_archive), fetch(:stage).to_s, File.basename(archive_object_key))
+            tmp_file = "#{archive_file}.part"
+            fail "#{tmp_file} is found. Another process is running?" if File.exist?(tmp_file)
+            if not File.exist?(archive_file)
+              File.open(tmp_file, 'w') do |f|
+                mkdir_p(File.dirname(archive_file))
+                content = get_object.body.read
+                f.write(content)
+              end
+              move(tmp_file, archive_file)
+            else
+              context.info "#{archive_file} is found."
             end
-          else
-            context.info "#{archive_file} is found."
-          end
 
-          remove_entry_secure(fetch(:local_cache_dir)) if File.exist? fetch(:local_cache_dir)
-          mkdir_p(fetch(:local_cache_dir))
-          case archive_file
-          when /\.zip\Z/
-            dir = archive_file.gsub(/\.zip\Z/, '')
-            cmd = "unzip -q -d #{fetch(:local_cache_dir)} #{archive_file}"
-          when /\.tar\.gz\Z|\.tar\.bz2\Z/
-            dir = archive_file.gsub(/\.tar\.gz\Z|\.tar\.bz2\Z/, '')
-            cmd = "tar xf #{archive_file} -C #{fetch(:local_cache_dir)}"
-          end
+            remove_entry_secure(fetch(:local_cache_dir)) if File.exist? fetch(:local_cache_dir)
+            mkdir_p(fetch(:local_cache_dir))
+            case archive_file
+            when /\.zip\Z/
+              cmd = "unzip -q -d #{fetch(:local_cache_dir)} #{archive_file}"
+            when /\.tar\.gz\Z|\.tar\.bz2\Z/
+              cmd = "tar xf #{archive_file} -C #{fetch(:local_cache_dir)}"
+            end
 
-          run_locally do
-            execute cmd
+            release_lock(true) do
+              run_locally do
+                execute cmd
+              end
+            end
           end
         end
 
@@ -108,8 +120,10 @@ module Capistrano
           rsync << "-e 'ssh -i #{key} #{ssh_port_option}'"
           rsync << "#{user}#{server.hostname}:#{rsync_cache || release_path}"
 
-          run_locally do
-            execute *rsync
+          release_lock do
+            run_locally do
+              execute *rsync
+            end
           end
 
           unless fetch(:rsync_cache).nil?
@@ -130,6 +144,35 @@ module Capistrano
           cache = fetch(:rsync_cache)
           cache = deploy_to + "/" + cache if cache && cache !~ /^\//
           cache
+        end
+
+        def stage_lock(&block)
+          lockfile = "#{fetch(:local_cache)}.#{fetch(:stage)}.lock"
+          File.open(lockfile, "w") do |f|
+            if f.flock(File::LOCK_EX | File::LOCK_NB)
+              block.call
+            else
+              fail ResourceBusyError, "Could not get #{lockfile}"
+            end
+          end
+        ensure
+          rm lockfile if File.exist? lockfile
+        end
+
+        def release_lock(exclusive = false, &block)
+          lockfile = "#{fetch(:local_cache)}.#{fetch(:stage)}.release.lock"
+          File.open(lockfile, File::RDONLY|File::CREAT) do |f|
+            mode = if exclusive
+                     File::LOCK_EX | File::LOCK_NB
+                   else
+                     File::LOCK_SH
+                   end
+            if f.flock(mode)
+              block.call
+            else
+              fail ResourceBusyError, "Could not get #{fetch(:lockfile)}"
+            end
+          end
         end
       end
     end
