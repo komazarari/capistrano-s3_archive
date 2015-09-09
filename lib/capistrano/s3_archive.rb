@@ -82,8 +82,8 @@ module Capistrano
             tmp_file = "#{archive_file}.part"
             fail "#{tmp_file} is found. Another process is running?" if File.exist?(tmp_file)
             if not File.exist?(archive_file)
+              mkdir_p(File.dirname(archive_file))
               File.open(tmp_file, 'w') do |f|
-                mkdir_p(File.dirname(archive_file))
                 content = get_object.body.read
                 f.write(content)
               end
