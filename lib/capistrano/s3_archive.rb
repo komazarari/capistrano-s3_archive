@@ -1,8 +1,9 @@
+require 'aws-sdk-core'
+
 load File.expand_path("../tasks/s3_archive.rake", __FILE__)
 
 require "capistrano/s3_archive/version"
 require 'capistrano/scm'
-require 'aws-sdk-core'
 
 set :rsync_options, ['-az --delete']
 set :rsync_copy, "rsync --archive --acls --xattrs"
