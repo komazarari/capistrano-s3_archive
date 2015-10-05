@@ -148,6 +148,7 @@ module Capistrano
         end
 
         def stage_lock(&block)
+          mkdir_p(File.dirname(fetch(:local_cache)))
           lockfile = "#{fetch(:local_cache)}.#{fetch(:stage)}.lock"
           File.open(lockfile, "w") do |f|
             if f.flock(File::LOCK_EX | File::LOCK_NB)
@@ -161,6 +162,7 @@ module Capistrano
         end
 
         def release_lock(exclusive = false, &block)
+          mkdir_p(File.dirname(fetch(:local_cache)))
           lockfile = "#{fetch(:local_cache)}.#{fetch(:stage)}.release.lock"
           File.open(lockfile, File::RDONLY|File::CREAT) do |f|
             mode = if exclusive
