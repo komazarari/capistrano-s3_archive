@@ -22,6 +22,12 @@ namespace :s3_archive do
     end
   end
 
+  after :stage, :cleanup do
+    run_locally do
+      strategy.cleanup
+    end
+  end
+
   desc 'Copy repo to releases'
   task :create_release => :stage do
     on release_roles :all do |server|

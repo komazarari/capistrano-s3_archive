@@ -110,6 +110,22 @@ module Capistrano
           end
         end
 
+        def cleanup
+          run_locally do
+            archives_dir = File.join(fetch(:s3_archive), fetch(:stage).to_s)
+            archives = capture(:ls, '-xtr', archives_dir).split
+            if archives.count >= fetch(:keep_releases)
+              tobe_removes = (archives - archives.last(fetch(:keep_releases)))
+              if tobe_removes.any?
+                tobe_removes_str = tobe_removes.map do |file|
+                  File.join(archives_dir, file)
+                end.join(' ')
+                execute :rm, tobe_removes_str
+              end
+            end
+          end
+        end
+
         def release(server = context.host)
           user = server.user + '@' unless server.user.nil?
           key  = server.keys.first || Array(server.ssh_options[:keys]).first
