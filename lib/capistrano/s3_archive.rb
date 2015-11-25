@@ -24,8 +24,8 @@ module Capistrano
         set :local_cache_dir, "#{fetch(:local_cache)}/#{fetch(:stage)}"
       end
 
-      def get_object
-        s3_client.get_object(bucket: bucket, key: archive_object_key)
+      def get_object(target)
+        s3_client.get_object({ bucket: bucket, key: archive_object_key }, target: target)
       end
 
       def list_objects(all_page = true)
@@ -85,8 +85,7 @@ module Capistrano
             if not File.exist?(archive_file)
               mkdir_p(File.dirname(archive_file))
               File.open(tmp_file, 'w') do |f|
-                content = get_object.body.read
-                f.write(content)
+                get_object(f)
               end
               move(tmp_file, archive_file)
             else
