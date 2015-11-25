@@ -5,12 +5,12 @@ load File.expand_path("../tasks/s3_archive.rake", __FILE__)
 require "capistrano/s3_archive/version"
 require 'capistrano/scm'
 
-set :rsync_options, ['-az --delete']
-set :rsync_copy, "rsync --archive --acls --xattrs"
-set :rsync_cache, "shared/deploy"
-set :local_cache, "tmp/deploy"
-set :s3_archive, "tmp/archives"
-set :sort_proc, ->(a,b) { b.key <=> a.key }
+set_if_empty :rsync_options, ['-az --delete']
+set_if_empty :rsync_copy, "rsync --archive --acls --xattrs"
+set_if_empty :rsync_cache, "shared/deploy"
+set_if_empty :local_cache, "tmp/deploy"
+set_if_empty :s3_archive, "tmp/archives"
+set_if_empty :sort_proc, ->(a,b) { b.key <=> a.key }
 
 module Capistrano
   module S3Archive
@@ -71,6 +71,7 @@ module Capistrano
 
         def check
           list_objects(false)
+          return if context.class == SSHKit::Backend::Local
           ssh_key  = context.host.keys.first || Array(context.host.ssh_options[:keys]).first
           if ssh_key.nil?
             fail MissingSSHKyesError, "#{RsyncStrategy} only supports publickey authentication. Please set #{context.host.hostname}.keys or ssh_options."
@@ -126,16 +127,20 @@ module Capistrano
         end
 
         def release(server = context.host)
-          user = server.user + '@' unless server.user.nil?
-          key  = server.keys.first || Array(server.ssh_options[:keys]).first
-          ssh_port_option = server.port.nil? ? '' : "-p #{server.port}"
-
+          unless context.class == SSHKit::Backend::Local
+            user = server.user + '@' unless server.user.nil?
+            key  = server.keys.first || Array(server.ssh_options[:keys]).first
+            ssh_port_option = server.port.nil? ? '' : "-p #{server.port}"
+          end
           rsync = ['rsync']
           rsync.concat fetch(:rsync_options)
           rsync << fetch(:local_cache_dir) + '/'
-          rsync << "-e 'ssh -i #{key} #{ssh_port_option}'"
-          rsync << "#{user}#{server.hostname}:#{rsync_cache || release_path}"
-
+          unless context.class == SSHKit::Backend::Local
+            rsync << "-e 'ssh -i #{key} #{ssh_port_option}'"
+            rsync << "#{user}#{server.hostname}:#{rsync_cache || release_path}"
+          else
+            rsync << "#{rsync_cache || release_path}"
+          end
           release_lock do
             run_locally do
               execute *rsync
@@ -144,7 +149,7 @@ module Capistrano
 
           unless fetch(:rsync_cache).nil?
             cache = rsync_cache
-            on server do
+            on [server] do
               copy = %(#{fetch(:rsync_copy)} "#{cache}/" "#{release_path}/")
               execute copy
             end
