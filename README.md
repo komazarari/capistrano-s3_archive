@@ -68,6 +68,11 @@ rsync_cache   | `shared/deploy` | Path where to cache your repository on the ser
 s3_archive    | `tmp/archives` | Path where to download source archives. Can be both relative or absolute.
 
 
+##### Experimental configration
+Key           | Default | Description
+--------------|---------|------------
+hardlink      | nil     | Enable `--link-dest` option when remote rsyncing. It could speed deployment up in the case rsync_cache enabled.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `bin/console` for an interactive prompt that will allow you to experiment.
