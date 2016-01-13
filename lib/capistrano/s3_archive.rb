@@ -139,6 +139,7 @@ module Capistrano
             rsync << "-e 'ssh -i #{key} #{ssh_port_option}'"
             rsync << "#{user}#{server.hostname}:#{rsync_cache || release_path}"
           else
+            rsync << '--no-compress'
             rsync << "#{rsync_cache || release_path}"
           end
           release_lock do
