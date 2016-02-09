@@ -72,7 +72,7 @@ module Capistrano
         def check
           list_objects(false)
           return if context.class == SSHKit::Backend::Local
-          ssh_key  = context.host.keys.first || Array(context.host.ssh_options[:keys]).first
+          ssh_key  = ssh_key_for(context.host)
           if ssh_key.nil?
             fail MissingSSHKyesError, "#{RsyncStrategy} only supports publickey authentication. Please set #{context.host.hostname}.keys or ssh_options."
           end
@@ -129,7 +129,7 @@ module Capistrano
         def release(server = context.host)
           unless context.class == SSHKit::Backend::Local
             user = server.user + '@' unless server.user.nil?
-            key  = server.keys.first || Array(server.ssh_options[:keys]).first
+            key  = ssh_key_for(server)
             ssh_port_option = server.port.nil? ? '' : "-p #{server.port}"
           end
           rsync = ['rsync']
@@ -162,6 +162,16 @@ module Capistrano
 
         def current_revision
           archive_object_key
+        end
+
+        def ssh_key_for(host)
+          if not host.keys.empty?
+            host.keys.first
+          elsif host.ssh_options && host.ssh_options.has_key?(:keys)
+            Array(host.ssh_options[:keys]).first
+          else fetch(:ssh_options, nil) && fetch(:ssh_options).has_key?(:keys)
+            fetch(:ssh_options)[:keys].first
+          end
         end
 
         private
