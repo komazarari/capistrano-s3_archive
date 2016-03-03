@@ -98,7 +98,7 @@ module Capistrano
             case archive_file
             when /\.zip\Z/
               cmd = "unzip -q -d #{fetch(:local_cache_dir)} #{archive_file}"
-            when /\.tar\.gz\Z|\.tar\.bz2\Z/
+            when /\.tar\.gz\Z|\.tar\.bz2\Z|\.tgz\Z/
               cmd = "tar xf #{archive_file} -C #{fetch(:local_cache_dir)}"
             end
 
