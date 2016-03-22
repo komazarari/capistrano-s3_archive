@@ -17,5 +17,6 @@ Vagrant.configure(2) do |config|
     if ! grep "`ssh-keygen -y -f .ssh/insecure_key`" /home/vagrant/.ssh/authorized_keys ;then
       ssh-keygen -y -f .ssh/insecure_key >> .ssh/authorized_keys
     fi
+    apt-get install git zip -y
   SHELL
 end
