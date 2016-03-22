@@ -61,6 +61,7 @@ Set parameters with `set :key, value`.
 Key           | Default | Description
 --------------|---------|------------
 branch        | `latest` | The S3 Object basename to download. Support `:latest` or such as `'201506011500.zip'`.
+version_id    | nil      | Version ID of version-controlled S3 object. It should use with `:branch`. e.g. `set :branch, 'myapp.zip'; set :version_id, 'qawsedrftgyhujikolq'`
 sort_proc     | `->(a,b) { b.key <=> a.key }` | Sort algorithm used to detect `:latest` object basename. It should be proc object for `a,b` as `Aws::S3::Object` comparing.
 rsync_options | `['-az']` | Options used to rsync.
 local_cache   | `tmp/deploy` | Path where to extruct your archive on local for staging and rsyncing. Can be both relative or absolute.

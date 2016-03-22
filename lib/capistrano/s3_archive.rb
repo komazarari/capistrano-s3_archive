@@ -25,7 +25,17 @@ module Capistrano
       end
 
       def get_object(target)
-        s3_client.get_object({ bucket: bucket, key: archive_object_key }, target: target)
+        opts = { bucket: bucket, key: archive_object_key }
+        opts[:version_id] = fetch(:version_id) if fetch(:version_id)
+        s3_client.get_object(opts, target: target)
+      end
+
+      def get_object_metadata
+        s3_client.list_object_versions(bucket: bucket, prefix: archive_object_key).versions.find do |v|
+          if fetch(:version_id) then v.version_id == fetch(:version_id)
+          else v.is_latest
+          end
+        end
       end
 
       def list_objects(all_page = true)
@@ -80,17 +90,23 @@ module Capistrano
 
         def stage
           stage_lock do
-            archive_file = File.join(fetch(:s3_archive), fetch(:stage).to_s, File.basename(archive_object_key))
+            archive_dir = File.join(fetch(:s3_archive), fetch(:stage).to_s)
+            archive_file = File.join(archive_dir, File.basename(archive_object_key))
             tmp_file = "#{archive_file}.part"
+            etag_file = File.join(archive_dir, ".#{File.basename(archive_object_key)}.etag")
             fail "#{tmp_file} is found. Another process is running?" if File.exist?(tmp_file)
-            if not File.exist?(archive_file)
+
+            etag = get_object_metadata.tap { |it| fail "No such object: #{current_revision}" if it.nil? }.etag
+            if [archive_file, etag_file].all? { |f| File.exist?(f) } && File.read(etag_file) == etag
+              context.info "#{archive_file} (etag:#{etag}) is found. download skipped."
+            else
+              context.info "Download #{current_revision} to #{archive_file}"
               mkdir_p(File.dirname(archive_file))
               File.open(tmp_file, 'w') do |f|
                 get_object(f)
               end
               move(tmp_file, archive_file)
-            else
-              context.info "#{archive_file} is found."
+              File.write(etag_file, etag)
             end
 
             remove_entry_secure(fetch(:local_cache_dir)) if File.exist? fetch(:local_cache_dir)
@@ -161,7 +177,7 @@ module Capistrano
         end
 
         def current_revision
-          archive_object_key
+          fetch(:version_id) ? "#{archive_object_key}?versionid=#{fetch(:version_id)}" : archive_object_key
         end
 
         def ssh_key_for(host)
