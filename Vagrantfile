@@ -2,8 +2,7 @@
 # vi: set ft=ruby :
 
 Vagrant.configure(2) do |config|
-#  config.vm.box = "ubuntu/trusty64"
-  config.vm.box = "local/ubuntu-14.04"
+  config.vm.box = "ubuntu/trusty64"
 
   config.vm.provision "shell", inline: <<-SHELL
     if ! dpkg -l | grep ruby2.2 > /dev/null; then
