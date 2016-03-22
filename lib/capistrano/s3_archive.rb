@@ -169,7 +169,7 @@ module Capistrano
             host.keys.first
           elsif host.ssh_options && host.ssh_options.has_key?(:keys)
             Array(host.ssh_options[:keys]).first
-          else fetch(:ssh_options, nil) && fetch(:ssh_options).has_key?(:keys)
+          elsif fetch(:ssh_options, nil) && fetch(:ssh_options).has_key?(:keys)
             fetch(:ssh_options)[:keys].first
           end
         end
