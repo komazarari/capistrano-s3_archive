@@ -51,7 +51,7 @@ module Capistrano
 
       def archive_object_key
         @archive_object_key ||=
-          case fetch(:branch)
+          case fetch(:branch).to_sym
           when :master, :latest, nil
             latest_object_key
           else
