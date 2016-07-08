@@ -6,6 +6,7 @@ require "capistrano/s3_archive/version"
 require 'capistrano/scm'
 
 set_if_empty :rsync_options, ['-az --delete']
+set_if_empty :rsync_ssh_options, []
 set_if_empty :rsync_copy, "rsync --archive --acls --xattrs"
 set_if_empty :rsync_cache, "shared/deploy"
 set_if_empty :local_cache, "tmp/deploy"
@@ -152,7 +153,7 @@ module Capistrano
           rsync.concat fetch(:rsync_options)
           rsync << fetch(:local_cache_dir) + '/'
           unless context.class == SSHKit::Backend::Local
-            rsync << "-e 'ssh -i #{key} #{ssh_port_option}'"
+            rsync << "-e 'ssh -i #{key} #{ssh_port_option} #{fetch(:rsync_ssh_options).join(' ')}'"
             rsync << "#{user}#{server.hostname}:#{rsync_cache || release_path}"
           else
             rsync << '--no-compress'
