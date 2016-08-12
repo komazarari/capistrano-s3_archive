@@ -145,7 +145,7 @@ module Capistrano
 
         def release(server = context.host)
           unless context.class == SSHKit::Backend::Local
-            user = server.user + '@' unless server.user.nil?
+            user = user_for(server) + '@' unless user_for(server).nil?
             key  = ssh_key_for(server)
             ssh_port_option = server.port.nil? ? '' : "-p #{server.port}"
           end
@@ -188,6 +188,16 @@ module Capistrano
             Array(host.ssh_options[:keys]).first
           elsif fetch(:ssh_options, nil) && fetch(:ssh_options).has_key?(:keys)
             fetch(:ssh_options)[:keys].first
+          end
+        end
+
+        def user_for(host)
+          if host.user
+            host.user
+          elsif host.ssh_options && host.ssh_options.has_key?(:user)
+            host.ssh_options[:user]
+          elsif fetch(:ssh_options, nil) && fetch(:ssh_options).has_key?(:user)
+            fetch(:ssh_options)[:user]
           end
         end
 
