@@ -167,13 +167,11 @@ module Capistrano
 
           unless fetch(:rsync_cache).nil?
             cache = rsync_cache
-            on [server] do
-              link_option = if fetch(:hardlink) && test("[ `readlink #{current_path}` != #{release_path} ]")
-                              "--link-dest `readlink #{current_path}`"
-                            end
-              copy = %(#{fetch(:rsync_copy)} #{link_option} "#{cache}/" "#{release_path}/")
-              execute copy
-            end
+            link_option = if fetch(:hardlink) && test("[ `readlink #{current_path}` != #{release_path} ]")
+                            "--link-dest `readlink #{current_path}`"
+                          end
+            copy = %(#{fetch(:rsync_copy)} #{link_option} "#{cache}/" "#{release_path}/")
+            context.execute copy
           end
         end
 
