@@ -12,6 +12,8 @@ set_if_empty :rsync_cache, "shared/deploy"
 set_if_empty :local_cache, "tmp/deploy"
 set_if_empty :s3_archive, "tmp/archives"
 set_if_empty :sort_proc, ->(a,b) { b.key <=> a.key }
+set_if_empty :archive_release_runner_concurrency, 20
+set_if_empty :archive_release_runner_options, { in: :groups, limit: fetch(:archive_release_runner_concurrency) }
 
 module Capistrano
   module S3Archive

@@ -5,10 +5,11 @@ namespace :s3_archive do
   end
 
   desc 'Check that the S3 buckets are reachable'
-  task :check  do
+  task :check do
     run_locally do
       strategy.local_check
     end
+
     on release_roles :all do
       strategy.check
     end
@@ -33,7 +34,7 @@ namespace :s3_archive do
 
   desc 'Copy repo to releases'
   task :create_release => :stage do
-    on release_roles :all do |server|
+    on release_roles(:all), fetch(:archive_release_runner_options) do |server|
       execute :mkdir, '-p', release_path
       strategy.release(server)
     end

@@ -67,7 +67,8 @@ rsync_options | `['-az']` | Options used to rsync.
 local_cache   | `tmp/deploy` | Path where to extruct your archive on local for staging and rsyncing. Can be both relative or absolute.
 rsync_cache   | `shared/deploy` | Path where to cache your repository on the server to avoid rsyncing from scratch each time. Can be both relative or absolute.<br> Set to `nil` if you want to disable the cache.
 s3_archive    | `tmp/archives` | Path where to download source archives. Can be both relative or absolute.
-
+archive_release_runner_options | { in: :groups, limit: fetch(:archive_release_runner_concurrency) } | Runner options on creating releases.
+(archive_release_runner_concurrency) | 20 | Default value of runner concurrency option.
 
 ##### Experimental configration
 Key           | Default | Description
