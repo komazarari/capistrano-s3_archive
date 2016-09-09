@@ -80,8 +80,11 @@ module Capistrano
         class MissingSSHKyesError < StandardError; end
         class ResourceBusyError < StandardError; end
 
-        def check
+        def local_check
           list_objects(false)
+        end
+
+        def check
           return if context.class == SSHKit::Backend::Local
           ssh_key  = ssh_key_for(context.host)
           if ssh_key.nil?
