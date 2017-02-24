@@ -58,7 +58,7 @@ module Capistrano
           when :master, :latest, nil
             latest_object_key
           else
-            [object_prefix, fetch(:branch)].join('/')
+            [object_prefix, fetch(:branch)]
           end
       end
 
@@ -73,7 +73,7 @@ module Capistrano
 
       def parse_s3_uri(uri)
         pathes = uri.split('://')[1].split('/')
-        [pathes.first, pathes.drop(1).join('/')]
+        [pathes.first, pathes.drop(1).push('').join('/')]
       end
 
       ### Default strategy
