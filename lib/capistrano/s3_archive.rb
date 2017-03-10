@@ -58,7 +58,7 @@ module Capistrano
           when :master, :latest, nil
             latest_object_key
           else
-            [object_prefix, fetch(:branch)].join('/')
+            object_prefix + fetch(:branch)
           end
       end
 
