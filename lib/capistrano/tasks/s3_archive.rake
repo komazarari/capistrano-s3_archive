@@ -18,6 +18,13 @@ namespace :s3_archive do
   desc 'Extruct and stage the S3 archive in a stage directory'
   task :stage do
     run_locally do
+      
+      # No need to deploy to the remote node if it already has the same
+      # revision as it's current.
+      if strategy.current_revision == fetch(:previous_revision)
+        raise "Release #{fetch(:previous_revision)} already exist on this node."
+      end
+
       if fetch(:skip_staging, false)
         info "Skip extructing and staging."
       else
