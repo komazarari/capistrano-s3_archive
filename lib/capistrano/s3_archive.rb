@@ -1,6 +1,8 @@
+$stderr.puts "DEPRECATION WARNING: `set :scm, :s3_archive` is deprecated. see https://github.com/capistrano/capistrano/blob/master/UPGRADING-3.7.md to update to the plugin architecture."
+
 require 'aws-sdk-core'
 
-load File.expand_path("../tasks/s3_archive.rake", __FILE__)
+load File.expand_path("../tasks/legacy_s3_archive.rake", __FILE__)
 
 require "capistrano/s3_archive/version"
 require 'capistrano/scm'
