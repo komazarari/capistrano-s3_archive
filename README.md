@@ -1,16 +1,19 @@
 # Capistrano::S3Archive
 
-Capistrano::S3Archive is an extention of [Capistrano](http://www.capistranorb.com/) which enables to `set :scm, :s3_archive`.
+Capistrano::S3Archive is an extention of [Capistrano](http://www.capistranorb.com/).
 
 This behaves like the [capistrano-rsync](https://github.com/moll/capistrano-rsync) except downloading sources from S3 instead of GIT by default.
 
+![img_s3archive_to_local_to_remote](./img/s3_archive-rsync.png)
+
+**CAUTION!!** Document for VERSION < 0.9 is [legacy_README](legacy_README.md)
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'capistrano-s3_archive'
+gem 'capistrano-s3_archive', '>= 0.9'
 ```
 
 And then execute:
@@ -23,9 +26,16 @@ And then execute:
 
 ## Usage
 
-`set :scm, :s3_archive` in your config file.
+### Quick Start
 
-Set a S3 path containing source archives to `repo_url`. For example, if you has following tree,
+In Capfile:
+
+```
+    require "capistrano/scm/s3_archive"
+    install_plugin Capistrano::SCM::S3Archive
+```
+
+And set a S3 path containing source archives to `:repo_url` and the parameters to access Amazon S3 to `:s3_archive_client_options`, For example, if you has following tree,
 
     s3://yourbucket/somedirectory/
                       |- 201506011200.zip
@@ -34,15 +44,15 @@ Set a S3 path containing source archives to `repo_url`. For example, if you has 
                       |- 201506020100.zip
                       `- 201506030100.zip
 
-then `set :repo_url, 's3://yourbucket/somedirectory'`.
+then your `config/deploy.rb` would be:
 
-Set parameters to access Amazon S3:
-
-```ruby
-set :s3_client_options, { region: 'ap-northeast-1', credentials: somecredentials }
+```
+    set :repo_url, 's3://yourbucket/somedirectory/'
+    set :s3_archive_client_options, { region: 'ap-northeast-1', credentials: somecredentials }
 ```
 
-And set regular capistrano options. To deploy staging:
+To deploy staging:
+
 ```
 $ bundle exec cap staging deploy
 ```
@@ -54,26 +64,69 @@ $ bundle exec cap staging deploy_only
 
 
 ### Configuration
-Set parameters with `set :key, value`.
 
-#### Rsync Strategy (default)
+Available configurations are followings (key, default).
 
-Key           | Default | Description
---------------|---------|------------
-branch        | `latest` | The S3 Object basename to download. Support `:latest` or such as `'201506011500.zip'`.
-version_id    | nil      | Version ID of version-controlled S3 object. It should use with `:branch`. e.g. `set :branch, 'myapp.zip'; set :version_id, 'qawsedrftgyhujikolq'`
-sort_proc     | `->(a,b) { b.key <=> a.key }` | Sort algorithm used to detect `:latest` object basename. It should be proc object for `a,b` as `Aws::S3::Object` comparing.
-rsync_options | `['-az']` | Options used to rsync.
-local_cache   | `tmp/deploy` | Path where to extruct your archive on local for staging and rsyncing. Can be both relative or absolute.
-rsync_cache   | `shared/deploy` | Path where to cache your repository on the server to avoid rsyncing from scratch each time. Can be both relative or absolute.<br> Set to `nil` if you want to disable the cache.
-s3_archive    | `tmp/archives` | Path where to download source archives. Can be both relative or absolute.
-archive_release_runner_options | { in: :groups, limit: fetch(:archive_release_runner_concurrency) } | Runner options on creating releases.
-(archive_release_runner_concurrency) | 20 | Default value of runner concurrency option.
+    :repo_url, nil
+    :branch, :latest
+    :s3_archive_client_options, nil
+    :s3_archive_sort_proc, ->(new, old) { old.key <=> new.key }
+    :s3_archive_object_version_id, nil
+    :s3_archive_local_download_dir, "tmp/archives"
+    :s3_archive_local_cache_dir, "tmp/deploy"
+    :s3_archive_remote_rsync_options, ['-az', '--delete']
+    :s3_archive_remote_rsync_ssh_options, []
+    :s3_archive_remote_rsync_runner_options, {}
+    :s3_archive_rsync_cache_dir, "shared/deploy"
+    :s3_archive_hardlink_release, false
 
-##### Experimental configration
-Key           | Default | Description
---------------|---------|------------
-hardlink      | nil     | Enable `--link-dest` option when remote rsyncing. It could speed deployment up in the case rsync_cache enabled.
+**`repo_url` (required)**
+
+The S3 bucket and prefix where the archives are stored. e.g. 's3://yourbucket/somedirectory/'.
+
+**`branch`**
+
+Basename of archive object to deploy. In the previous example at Quick Start section, you can use `'201506011500.zip'`, `'201506020100.zip'`, etc. And `:latest` is a special symbol to select latest object automatically by `:s3_archive_sort_proc`.
+
+**`s3_archive_client_options` (required)**
+
+Options passed to `Aws::S3::Client.new(options)` to fetch archives.
+
+**`s3_archive_sort_proc`**
+
+Sort algorithm used to detect basename of `:latest` object. It should be proc object for `new,old` as `Aws::S3::Object` comparing.
+
+**`:s3_archive_object_version_id`**
+
+Version ID of version-controlled S3 object. It should use with `:branch`. e.g. `set :branch, 'myapp.zip'; set :version_id, 'qawsedrftgyhujikolq'`
+
+**`:s3_archive_local_download_dir`**
+
+Path where to download source archives. Can use both relative or absolute.
+
+**`:s3_archive_local_cache_dir`**
+
+Path where to extruct your archive on local for staging and rsyncing. Can use both relative or absolute.
+
+**`:s3_archive_remote_rsync_options`**
+
+Options used to rsync to remote cache dir.
+
+**`:s3_archive_remote_rsync_ssh_options`**
+
+Options used in `rsync -e 'ssh OPTIONS'`.
+
+**`:s3_archive_remote_rsync_runner_options`**
+
+Runner options of a task to rsync to remote cache, this options are passed to `on release_roles(:all), options` in the rsyncing task. It's useful when to reduce the overload of the machine running Capistrano. e.g. `set :s3_archive_remote_rsync_runner_options, { in: :groups, limit: 10 }`.
+
+**`:s3_archive_rsync_cache_dir`**
+
+Path where to cache your sources on the remote server to avoid rsyncing from scratch each time. Can use both relative or absolute from `deploy_to` path.
+
+**`:s3_archive_hardlink_release`**
+
+Enable `--link-dest` option when creating release directory by remote rsyncing. It could speed deployment up.
 
 ## Development
 
