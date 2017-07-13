@@ -1,7 +1,6 @@
 require "capistrano/scm/plugin"
 require "aws-sdk"
 require "uri"
-require 'pry'
 
 module Capistrano
   class SCM
@@ -12,8 +11,10 @@ module Capistrano
       class ResourceBusyError < StandardError; end
 
       def set_defaults
+        set_if_empty :s3_archive_client_options, {}
         set_if_empty :s3_archive_extract_to, :local # :local or :remote
         set_if_empty(:s3_archive_sort_proc, ->(new, old) { old.key <=> new.key })
+        set_if_empty :s3_archive_object_version_id, nil
         set_if_empty :s3_archive_local_download_dir, "tmp/archives"
         set_if_empty :s3_archive_local_cache_dir, "tmp/deploy"
         set_if_empty :s3_archive_remote_rsync_options, ['-az', '--delete']
@@ -211,7 +212,7 @@ module Capistrano
       end
 
       def s3_client
-        @s3_client ||= Aws::S3::Client.new(fetch(:s3_client_options))
+        @s3_client ||= Aws::S3::Client.new(fetch(:s3_archive_client_options))
       end
 
        class LocalExtractor
@@ -263,7 +264,6 @@ module Capistrano
           lockfile = "#{fetch(:s3_archive_local_cache_dir)}.#{fetch(:stage)}.lock"
           begin
             File.open(lockfile, "w") do |file|
-            # binding.pry
               fail ResourceBusyError, "Could not get #{lockfile}" unless file.flock(File::LOCK_EX | File::LOCK_NB)
               block.call
             end
