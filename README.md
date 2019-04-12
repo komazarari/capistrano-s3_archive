@@ -25,6 +25,14 @@ And then execute:
 <!--     $ gem install capistrano-s3_archive -->
 
 ## Usage
+### Requirements
+
+|                   | local host<br>(extract to local) | remote host<br>(extract to local) | local host<br>(extract to remote) | remote host<br>(extract to local) |
+| :-                | :-:                              | :-:                               |                                  |                                   |
+| awscli            |                                  |                                   |                                  |                                   |
+| s3:getObject |                                  |                                   |                                  |                                   |
+
+
 
 ### Quick Start
 

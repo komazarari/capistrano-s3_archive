@@ -1,11 +1,10 @@
 require 'spec_helper'
+require "capistrano/s3_archive/version"
 
-describe Capistrano::S3Archive do
-  it 'has a version number' do
-    expect(Capistrano::S3Archive::VERSION).not_to be nil
-  end
-
-  it 'does something useful' do
-    expect(false).to eq(true)
+module Capistrano
+  describe S3Archive do
+    it 'has a version number' do
+      expect(Capistrano::S3Archive::VERSION).not_to be nil
+    end
   end
 end
