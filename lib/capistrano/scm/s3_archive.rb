@@ -20,9 +20,20 @@ module Capistrano
       def set_defaults
         set_if_empty :s3_archive_client_options, {}
         set_if_empty(:s3_archive_sort_proc, ->(new, old) { old.key <=> new.key })
-        set_if_empty :s3_archive_remote_cache_dir, -> { File.join(shared_path, "archives") }
         set_if_empty :s3_archive_strategy, :rsync
         set_if_empty :s3_archive_object_version_id, nil
+
+        # strategy direct
+        set_if_empty :s3_archive_remote_cache_dir, -> { File.join(shared_path, "archives") }
+
+        # strategy rsync
+        set_if_empty :s3_archive_local_download_dir, "tmp/archives"
+        set_if_empty :s3_archive_local_cache_dir, "tmp/deploy"
+        set_if_empty :s3_archive_remote_rsync_options, ['-az', '--delete']
+        set_if_empty :s3_archive_remote_rsync_runner_options, {}
+        set_if_empty :s3_archive_remote_rsync_ssh_options, []
+        set_if_empty :s3_archive_rsync_cache_dir, "shared/deploy"
+        set_if_empty :s3_archive_remote_rsync_copy_option, "rsync --archive --acls --xattrs"
       end
 
       ######
@@ -38,13 +49,6 @@ module Capistrano
           backend.execute :echo, "ssh connected"
         end
       end
-
-      # def release_agent
-      #   @release_agent ||= case strategy
-      #                      when :direct then DirectReleaseAgent.new
-      #                      when :rsync then RsyncReleaseAgent.new
-      #                      end
-      # end
 
       def strategy
         @strategy ||= fetch(:s3_archive_strategy)
@@ -69,41 +73,51 @@ module Capistrano
           when /\.tar\.gz\Z|\.tar\.bz2\Z|\.tgz\Z/
             backend.execute :tar, "xf", archive_file, "-C", release_path
           end
+        when :rsync
+          link_option = if fetch(:s3_archive_hardlink_release) && backend.test("[ `readlink #{current_path}` != #{release_path} ]")
+                          "--link-dest `readlink #{current_path}`"
+                        end
+          create_release = %[#{fetch(:s3_archive_remote_rsync_copy_option)} #{link_option} "#{rsync_cache_dir}/" "#{release_path}/"]
+          backend.execute create_release
         end
       end
 
-#       def release
-#         if fetch(:s3_archive_extract_to) == :local
-#           link_option = if fetch(:s3_archive_hardlink_release) && backend.test("[ `readlink #{current_path}` != #{release_path} ]")
-#                           "--link-dest `readlink #{current_path}`"
-#                         end
-#           create_release = %[#{fetch(:s3_archive_rsync_copy)} #{link_option} "#{rsync_cache_dir}/" "#{release_path}/"]
-#         else
-#           archive_file = File.basename(archive_object_key)
-#           archive_path = File.join(fetch(:s3_archive_remote_cache_dir), archive_file)
-#           case archive_file
-#           when /\.zip\Z/
-#             create_release = "unzip -q -d #{release_path} #{archive_path}"
-#           when /\.tar\.gz\Z|\.tar\.bz2\Z|\.tgz\Z/
-#             create_release = "tar xf #{archive_path} -C #{release_path}"
-#           end
-#         end
-#         backend.execute create_release
-#       end
-
       # for rsync
       def download_to_local_cache
-        local_cache.download(s3params.bucket,
-                             archive_object_key,
-                             fetch(:s3_archive_object_version_id))
+        etag = get_object_metadata.tap { |it| raise "No such object: #{current_revision}" if it.nil? }.etag
+        local_cache.download_and_extract(s3params.bucket,
+                                         archive_object_key,
+                                         fetch(:s3_archive_object_version_id),
+                                         etag)
       end
 
       def cleanup_local_cache
         local_cache.cleanup(keep: fetch(:keep_releases))
       end
 
-      def transfer_sources(server)
+      def transfer_sources(dest)
+        rsync_options = []
+        rsync_options.concat fetch(:s3_archive_remote_rsync_options, [])
+        rsync_options << local_cache.cache_dir + "/"
+
+        if dest.local?
+          rsync_options << ('--no-compress')
+          rsync_options << rsync_cache_dir
+        else
+          rsync_ssh_options = []
+          rsync_ssh_options << dest.ssh_key_option unless dest.ssh_key_option.empty?
+          rsync_ssh_options.concat fetch(:s3_archive_remote_rsync_ssh_options)
+          rsync_options << "-e 'ssh #{rsync_ssh_options}'" unless rsync_ssh_options.empty?
+          rsync_options << "#{dest.login_user_at}#{dest.hostname}:#{rsync_cache_dir}"
+        end
+
+        backend.execute :rsync, *rsync_options
       end
+
+      def rsync_cache_dir
+        File.join(deploy_to, fetch(:s3_archive_rsync_cache_dir))
+      end
+
 
       # for direct
       def download_to_shared_path
@@ -136,10 +150,6 @@ module Capistrano
           end
         end
       end
-
-      # include FileUtils
-
-      # class ResourceBusyError < StandardError; end
 
       def s3params
         @s3params ||= S3Params.new(fetch(:repo_url))
@@ -190,12 +200,12 @@ module Capistrano
 
       def local_cache
         @local_cache ||= LocalChache.new(
+          backend,
           File.join(fetch(:s3_archive_local_download_dir), fetch(:stage).to_s),
           File.join(fetch(:s3_archive_local_cache_dir), fetch(:stage).to_s),
           s3_client
         )
       end
-
 
       class S3Params
         attr_reader :bucket, :object_prefix
@@ -208,17 +218,18 @@ module Capistrano
       end
 
       class LocalChache
-        attr_reader :downlowd_dir, :cache_dir, :s3_client
+        attr_reader :backend, :download_dir, :cache_dir, :s3_client
         include FileUtils
         class ResourceBusyError < StandardError; end
 
-        def initialize(downlowd_dir, cache_dir, s3_client)
+        def initialize(backend, download_dir, cache_dir, s3_client)
+          @backend = backend
           @s3_client = s3_client
           @download_dir = download_dir
           @cache_dir = cache_dir
         end
 
-        def download(bucket, object_key, version_id, etag = nil)
+        def download_and_extract(bucket, object_key, version_id, etag = nil)
           download_lock do
             target_file = File.join(download_dir, File.basename(object_key))
             tmp_file = "#{target_file}.part"
@@ -238,11 +249,28 @@ module Capistrano
               move(tmp_file, target_file)
               File.write(etag_file, etag)
             end
+            extract(target_file, cache_dir)
           end
+        end
+
+        def extract(file, target_dir)
+          remove_entry_secure(target_dir) if File.exist?(target_dir)
+          mkdir_p(target_dir)
+          case file
+          when /\.zip\Z/
+            cmd = "unzip -q -d #{target_dir} #{file}"
+          when /\.tar\.gz\Z|\.tar\.bz2\Z|\.tgz\Z/
+            cmd = "tar xf #{file} -C #{target_dir}"
+          end
+
+          backend.execute cmd
         end
 
         def cleanup(keep: 0)
           downloaded_files = Dir.glob(download_dir).sort_by(&File.method(:mtime))
+          return if downloaded_files.count <= keep
+
+          remove(downloaded_files - downloaded_files.last(keep))
         end
 
         def all_file_exist?(arr)
@@ -261,6 +289,24 @@ module Capistrano
             rm lockfile if File.exist? lockfile
           end
         end
+      end
+    end
+  end
+
+   class Configuration
+    class Server
+      def login_user_at
+        user = [user, ssh_options[:user]].compact.first
+        user ? "#{user}@" : ''
+      end
+
+      def ssh_key_option
+        key = [keys, ssh_options[:keys]].flatten.compact.first
+        key ? "-i #{key}" : ''
+      end
+
+      def ssh_port_option
+        port ? "-p #{port}" : ''
       end
     end
   end
