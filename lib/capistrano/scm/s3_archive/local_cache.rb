@@ -2,59 +2,60 @@ module Capistrano
   class SCM
     class S3Archive
       class LocalCache
-        attr_reader :backend, :download_dir, :cache_dir, :s3_client
+        attr_reader :backend, :download_dir, :cache_dir, :archive_object
         include FileUtils
         class ResourceBusyError < StandardError; end
 
-        def initialize(backend, download_dir, cache_dir, s3_client)
+        def initialize(backend, download_dir, cache_dir, archive_object)
           @backend = backend
-          @s3_client = s3_client
           @download_dir = download_dir
           @cache_dir = cache_dir
+          @archive_object = archive_object
         end
 
-        def download_and_extract(bucket, object_key, version_id, etag = nil)
+        def download
           download_lock do
-            target_file = File.join(download_dir, File.basename(object_key))
             tmp_file = "#{target_file}.part"
-            etag_file = File.join(download_dir, ".#{File.basename(object_key)}.etag")
+            etag_file = File.join(download_dir, ".#{archive_object.key_basename}.etag")
             raise "#{tmp_file} is found. Another process is running?" if File.exist?(tmp_file)
 
-            if all_file_exist?([target_file, etag_file]) && File.read(etag_file) == etag
-              backend.info "#{target_file} (etag:#{etag}) is found. download skipped."
+            if all_file_exist?([target_file, etag_file]) && File.read(etag_file) == archive_object.etag
+              backend.info "#{target_file} (etag:#{archive_object.etag}) is found. download skipped."
             else
-              backend.info "Download #{object_key} to #{target_file}"
+              backend.info "Download s3://#{archive_object.bucket}/#{archive_object.key} to #{target_file}"
               mkdir_p(File.dirname(target_file))
               File.open(tmp_file, 'w') do |file|
-                opts = { bucket: bucket, key: object_key }
-                opts[:version_id] = version_id if version_id
-                s3_client.get_object(opts, target: file)
+                archive_object.get_object(file)
               end
               move(tmp_file, target_file)
-              File.write(etag_file, etag)
+              File.write(etag_file, archive_object.etag)
             end
-            extract(target_file, cache_dir)
           end
         end
 
-        def extract(file, target_dir)
-          remove_entry_secure(target_dir) if File.exist?(target_dir)
-          mkdir_p(target_dir)
-          case file
+        def extract
+          remove_entry_secure(cache_dir) if File.exist?(cache_dir)
+          mkdir_p(cache_dir)
+          case target_file
           when /\.zip\Z/
-            cmd = "unzip -q -d #{target_dir} #{file}"
+            cmd = "unzip -q -d #{cache_dir} #{target_file}"
           when /\.tar\.gz\Z|\.tar\.bz2\Z|\.tgz\Z/
-            cmd = "tar xf #{file} -C #{target_dir}"
+            cmd = "tar xf #{target_file} -C #{cache_dir}"
           end
 
-          backend.execute cmd
+          backend.execute cmd # should I use `execute`?
         end
 
         def cleanup(keep: 0)
           downloaded_files = Dir.glob(download_dir).sort_by(&File.method(:mtime))
           return if downloaded_files.count <= keep
 
-          remove(downloaded_files - downloaded_files.last(keep))
+          to_be_removes = (downloaded_files - downloaded_files.last(keep)).flat_map { |f| [f, ".#{f}.etag"] }
+          remove(to_be_removes, force: true)
+        end
+
+        def target_file
+          File.join(download_dir, archive_object.key_basename)
         end
 
         def all_file_exist?(arr)
