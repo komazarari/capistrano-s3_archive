@@ -16,7 +16,6 @@ namespace :s3_archive do
   task create_release: :stage do
     on release_roles(:all) do
       execute :mkdir, '-p', release_path
-      # plugin.release_agent.deploy_to_release_path
       plugin.deploy_to_release_path
     end
   end
