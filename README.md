@@ -1,19 +1,21 @@
 # Capistrano::S3Archive
 
-Capistrano::S3Archive is an extention of [Capistrano](http://www.capistranorb.com/).
-
-This behaves like the [capistrano-rsync](https://github.com/moll/capistrano-rsync) except downloading sources from S3 instead of GIT by default.
-
-![img_s3archive_to_local_to_remote](./img/s3_archive-rsync.png)
+Capistrano::S3Archive is the `SCM` extention of [Capistrano](http://www.capistranorb.com/).
 
 **CAUTION!!** Document for VERSION < 0.9 is [legacy_README](legacy_README.md)
+
+This `SCM` treats your S3 bucket as a source repository, and maps the uploaded ZIP/TAR archive file to a `branch` in Capistrano.
+
+![img_s3archive_repository_and_branches](./img/s3_archive-repo-branch.png)
+
+And this makes it possible to separate the deployment process into "pre-build" and "distribution", and helps to shorten the time of distribution and simplify the management of access rights. For example, you can prepare a zip file that has already done `npm install`, and an other, you can set up an EC2 IAM profile that allowed to read S3 instead of putting access keys for your private Git repository on the remote hosts.
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'capistrano-s3_archive', '>= 0.9'
+gem 'capistrano-s3_archive', '~> 1.0'
 ```
 
 And then execute:
@@ -25,23 +27,56 @@ And then execute:
 <!--     $ gem install capistrano-s3_archive -->
 
 ## Usage
+### Set strategy
+Choose a strategy for deploying extracted code to the remote from the archive.
+- rsync
+- direct
+
+such as `set :s3_archive_strategy, :direct`.
+
+
+#### strategy `rsync` (default)
+![img_s3archive_to_local_to_remote](./img/s3_archive-rsync.png)
+
+This strategy behaves like the [capistrano-rsync](https://github.com/moll/capistrano-rsync) except downloading sources from S3 instead of GIT by default.
+
+#### strategy `direct`
+![img_s3archive_to_local_to_remote](./img/s3_archive-direct.png)
+
+
 ### Requirements
 
-|                   | local host<br>(extract to local) | remote host<br>(extract to local) | local host<br>(extract to remote) | remote host<br>(extract to local) |
-| :-                | :-:                              | :-:                               |                                  |                                   |
-| awscli            |                                  |                                   |                                  |                                   |
-| s3:getObject |                                  |                                   |                                  |                                   |
+| For `rsync` strategy | local | remotes |
+| :-                    | :-:   | :-:     |
+| rsync                 | ✔     | ✔       |
+| unzip or tar          | ✔     | -       |
+| awscli                | -     | -       |
+| s3:ListBucket         | ✔     | -       |
+| s3:GetObjectVersion   | ✔     | -       |
+| s3:GetObject          | ✔     | -       |
 
+
+
+| For `direct` strategy     | local | remotes |
+| :-                        | :-:   | :-:     |
+| rsync                     | -     | -       |
+| unzip or tar              | -     | ✔       |
+| awscli                    | -     | ✔       |
+| awscli configuration (*1) | -     | ✔       |
+| s3:ListBucket             | ✔     | -       |
+| s3:GetObjectVersion       | ✔     | -       |
+| s3:GetObject              | -     | ✔       |
+
+_(*1) awscli on remote hosts need to have access rights to S3 by default settings._
 
 
 ### Quick Start
 
 In Capfile:
 
-```
     require "capistrano/scm/s3_archive"
     install_plugin Capistrano::SCM::S3Archive
-```
+
 
 And set a S3 path containing source archives to `:repo_url` and the parameters to access Amazon S3 to `:s3_archive_client_options`, For example, if you has following tree,
 
@@ -54,10 +89,9 @@ And set a S3 path containing source archives to `:repo_url` and the parameters t
 
 then your `config/deploy.rb` would be:
 
-```
     set :repo_url, 's3://yourbucket/somedirectory/'
     set :s3_archive_client_options, { region: 'ap-northeast-1', credentials: somecredentials }
-```
+
 
 To deploy staging:
 
@@ -75,18 +109,14 @@ $ bundle exec cap staging deploy_only
 
 Available configurations are followings (key, default).
 
+    # COMMON SETTINGS
     :repo_url, nil
     :branch, :latest
     :s3_archive_client_options, nil
     :s3_archive_sort_proc, ->(new, old) { old.key <=> new.key }
+    :s3_archive_strategy, :rsync
     :s3_archive_object_version_id, nil
-    :s3_archive_local_download_dir, "tmp/archives"
-    :s3_archive_local_cache_dir, "tmp/deploy"
-    :s3_archive_remote_rsync_options, ['-az', '--delete']
-    :s3_archive_remote_rsync_ssh_options, []
-    :s3_archive_remote_rsync_runner_options, {}
-    :s3_archive_rsync_cache_dir, "shared/deploy"
-    :s3_archive_hardlink_release, false
+
 
 **`repo_url` (required)**
 
@@ -104,9 +134,28 @@ Options passed to `Aws::S3::Client.new(options)` to fetch archives.
 
 Sort algorithm used to detect basename of `:latest` object. It should be proc object for `new,old` as `Aws::S3::Object` comparing.
 
+**`:s3_archive_strategy, :rsync`**
+
+A Strategy to distribute archived source code. You can set `:rsync` or `direct`.
+
 **`:s3_archive_object_version_id`**
 
 Version ID of version-controlled S3 object. It should use with `:branch`. e.g. `set :branch, 'myapp.zip'; set :version_id, 'qawsedrftgyhujikolq'`
+
+#### Configurations for `rsync` strategy
+
+    :s3_archive_skip_download, nil
+    :s3_archive_local_download_dir, "tmp/archives"
+    :s3_archive_local_cache_dir, "tmp/deploy"
+    :s3_archive_remote_rsync_options, ['-az', '--delete']
+    :s3_archive_remote_rsync_ssh_options, []
+    :s3_archive_remote_rsync_runner_options, {}
+    :s3_archive_rsync_cache_dir, "shared/deploy"
+    :s3_archive_hardlink_release, false
+
+**`:s3_archive_skip_download`**
+
+If this set to true, skip downloading the archive and rsync from local cache.
 
 **`:s3_archive_local_download_dir`**
 
@@ -135,6 +184,11 @@ Path where to cache your sources on the remote server to avoid rsyncing from scr
 **`:s3_archive_hardlink_release`**
 
 Enable `--link-dest` option when creating release directory by remote rsyncing. It could speed deployment up.
+
+#### Configurations for `direct` strategy
+
+    :s3_archive_remote_cache_dir, -> { File.join(shared_path, "archives") } # 典型的には,
+
 
 ## Development
 
