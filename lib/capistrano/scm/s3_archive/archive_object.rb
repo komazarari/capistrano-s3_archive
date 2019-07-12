@@ -10,7 +10,7 @@ module Capistrano
         def initialize(repo_url: nil, version_id: nil, sort_proc: nil, branch: :latest, client_options: {})
           uri = URI.parse(repo_url)
           @bucket = uri.host
-          @prefix = uri.path.sub(/\/?\Z/, '/').slice(1..-1) # normalize path
+          @prefix = uri.path.sub(%r{/?\Z}, '/').slice(1..-1) # normalize path
           @version_id = version_id
           @sort_proc = sort_proc
           @branch = branch
@@ -35,7 +35,7 @@ module Capistrano
         end
 
         def latest_key
-          list_all_objects.sort(&sort_proc).first.key
+          list_all_objects.min(&sort_proc).key
         end
 
         def list_all_objects

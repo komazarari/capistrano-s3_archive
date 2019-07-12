@@ -69,6 +69,7 @@ module Capistrano
           begin
             File.open(lockfile, "w") do |file|
               raise ResourceBusyError, "Could not get #{lockfile}" unless file.flock(File::LOCK_EX | File::LOCK_NB)
+
               block.call
             end
           ensure
