@@ -36,7 +36,8 @@ module Capistrano
         end
 
         def target_file
-          File.join(download_dir, archive_object.key_basename)
+          basename = [archive_object.key_basename, archive_object.version_id].join('?')
+          File.join(download_dir, basename)
         end
       end
     end

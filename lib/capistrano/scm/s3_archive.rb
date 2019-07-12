@@ -71,12 +71,11 @@ module Capistrano
       def deploy_to_release_path
         case strategy
         when :direct
-          archive_dir = File.join(fetch(:s3_archive_remote_cache_dir), fetch(:stage).to_s)
-          archive_file = File.join(archive_dir, File.basename(archive_object.key))
+          archive_file = remote_cache.target_file
           case archive_file
-          when /\.zip\Z/
+          when /\.zip\?.*\Z/
             backend.execute :unzip, "-q -d", release_path, archive_file
-          when /\.tar\.gz\Z|\.tar\.bz2\Z|\.tgz\Z/
+          when /\.tar\.gz\?.*\Z|\.tar\.bz2\?.*\Z|\.tgz\?.*\Z/
             backend.execute :tar, "xf", archive_file, "-C", release_path
           end
         when :rsync
