@@ -8,3 +8,6 @@ gem "capistrano-s3_archive", path: "../"
 
 ### local stage exapmle
 gem "capistrano-locally"
+
+### debug
+gem "pry"
