@@ -37,9 +37,9 @@ module Capistrano
           remove_entry_secure(cache_dir) if File.exist?(cache_dir)
           mkdir_p(cache_dir)
           case target_file
-          when /\.zip\Z/
+          when /\.zip\?.*\Z/
             cmd = "unzip -q -d #{cache_dir} #{target_file}"
-          when /\.tar\.gz\Z|\.tar\.bz2\Z|\.tgz\Z/
+          when /\.tar\.gz\?.*\Z|\.tar\.bz2\?.*\Z|\.tgz\?.*\Z/
             cmd = "tar xf #{target_file} -C #{cache_dir}"
           end
 
@@ -55,7 +55,8 @@ module Capistrano
         end
 
         def target_file
-          File.join(download_dir, archive_object.key_basename)
+          basename = [archive_object.key_basename, archive_object.version_id].join('?')
+          File.join(download_dir, basename)
         end
 
         def all_file_exist?(arr)

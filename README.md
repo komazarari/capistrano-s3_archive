@@ -26,49 +26,6 @@ And then execute:
 
 <!--     $ gem install capistrano-s3_archive -->
 
-## Usage
-### Set strategy
-Choose a strategy for deploying extracted code to the remote from the archive.
-- rsync
-- direct
-
-such as `set :s3_archive_strategy, :direct`.
-
-
-#### strategy `rsync` (default)
-![img_s3archive_to_local_to_remote](./img/s3_archive-rsync.png)
-
-This strategy behaves like the [capistrano-rsync](https://github.com/moll/capistrano-rsync) except downloading sources from S3 instead of GIT by default.
-
-#### strategy `direct`
-![img_s3archive_to_local_to_remote](./img/s3_archive-direct.png)
-
-
-### Requirements
-
-| For `rsync` strategy | local | remotes |
-| :-                    | :-:   | :-:     |
-| rsync                 | ✔     | ✔       |
-| unzip or tar          | ✔     | -       |
-| awscli                | -     | -       |
-| s3:ListBucket         | ✔     | -       |
-| s3:GetObjectVersion   | ✔     | -       |
-| s3:GetObject          | ✔     | -       |
-
-
-
-| For `direct` strategy     | local | remotes |
-| :-                        | :-:   | :-:     |
-| rsync                     | -     | -       |
-| unzip or tar              | -     | ✔       |
-| awscli                    | -     | ✔       |
-| awscli configuration (*1) | -     | ✔       |
-| s3:ListBucket             | ✔     | -       |
-| s3:GetObjectVersion       | ✔     | -       |
-| s3:GetObject              | -     | ✔       |
-
-_(*1) awscli on remote hosts need to have access rights to S3 by default settings._
-
 
 ### Quick Start
 
@@ -99,10 +56,50 @@ To deploy staging:
 $ bundle exec cap staging deploy
 ```
 
-Or to skip download & extruct archive and deploy local files:
-```
-$ bundle exec cap staging deploy_only
-```
+## Usage
+### Set strategy
+Choose a strategy for deploying extracted code to the remote from the archive.
+- rsync
+- direct
+
+such as `set :s3_archive_strategy, :direct`.
+
+
+#### strategy `rsync` (default)
+![img_s3archive_to_local_to_remote](./img/s3_archive-rsync.png)
+
+This strategy behaves like the [capistrano-rsync](https://github.com/moll/capistrano-rsync) except downloading sources from S3 instead of GIT by default.
+
+#### strategy `direct`
+![img_s3archive_to_local_to_remote](./img/s3_archive-direct.png)
+
+
+### Requirements
+
+| For `rsync` strategy  | local | remotes |
+| :-                    | :-:   | :-:     |
+| rsync                 | ✔     | ✔       |
+| unzip or tar          | ✔     | -       |
+| awscli                | -     | -       |
+| s3:ListBucket         | ✔     | -       |
+| s3:ListBucketVersions | ✔     | -       |
+| s3:GetObjectVersion   | ✔     | -       |
+| s3:GetObject          | ✔     | -       |
+
+
+
+| For `direct` strategy     | local | remotes |
+| :-                        | :-:   | :-:     |
+| rsync                     | -     | -       |
+| unzip or tar              | -     | ✔       |
+| awscli                    | -     | ✔       |
+| awscli configuration (*1) | -     | ✔       |
+| s3:ListBucket             | ✔     | ✔       |
+| s3:ListBucketVersions     | ✔     | ✔       |
+| s3:GetObjectVersion       | -     | ✔       |
+| s3:GetObject              | -     | ✔       |
+
+_(*1) awscli on remote hosts need to have access rights to S3 by default settings._
 
 
 ### Configuration
@@ -112,7 +109,7 @@ Available configurations are followings (key, default).
     # COMMON SETTINGS
     :repo_url, nil
     :branch, :latest
-    :s3_archive_client_options, nil
+    :s3_archive_client_options, {}
     :s3_archive_sort_proc, ->(new, old) { old.key <=> new.key }
     :s3_archive_strategy, :rsync
     :s3_archive_object_version_id, nil
