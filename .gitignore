@@ -10,3 +10,5 @@
 /vendor
 
 /example/vendor
+/example/tmp/
+/example/log/
