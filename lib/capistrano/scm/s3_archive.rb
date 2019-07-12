@@ -14,7 +14,6 @@ require "capistrano/scm/s3_archive/remote_cache"
 module Capistrano
   class SCM
     class S3Archive
-
       def define_tasks
         eval_rakefile File.expand_path("tasks/s3_archive.rake", __dir__)
       end
@@ -103,7 +102,7 @@ module Capistrano
         rsync_options << local_cache.cache_dir + "/"
 
         if dest.local?
-          rsync_options << ('--no-compress')
+          rsync_options << '--no-compress'
           rsync_options << rsync_cache_dir
         else
           rsync_ssh_options = []
@@ -119,7 +118,6 @@ module Capistrano
       def rsync_cache_dir
         File.join(deploy_to, fetch(:s3_archive_rsync_cache_dir))
       end
-
 
       # for direct
       def download_to_shared_path
