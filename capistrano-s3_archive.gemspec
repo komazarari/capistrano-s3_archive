@@ -1,5 +1,4 @@
-# coding: utf-8
-lib = File.expand_path('../lib', __FILE__)
+lib = File.expand_path('lib', __dir__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'capistrano/s3_archive/version'
 
@@ -9,8 +8,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Takuto Komazaki"]
   spec.email         = ["komazarari@gmail.com"]
 
-  spec.summary       = %q{Capistrano deployment from an archive on Amazon S3.}
-  spec.description   = %q{Capistrano deployment from an archive on Amazon S3.}
+  spec.summary       = 'Capistrano deployment from an archive on Amazon S3.'
+  spec.description   = 'Capistrano deployment from an archive on Amazon S3.'
   spec.homepage      = "https://github.com/komazarari/capistrano-s3_archive"
 
   spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
@@ -18,14 +17,14 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.required_ruby_version = '>= 2.0.0'
-  spec.add_dependency 'capistrano', '~> 3.0'
+  spec.required_ruby_version = '>= 2.4.0'
   spec.add_dependency 'aws-sdk-s3', '~> 1'
+  spec.add_dependency 'capistrano', '~> 3.0'
 
   spec.add_development_dependency "bundler"
-  spec.add_development_dependency "rake"
-  spec.add_development_dependency "rubocop"
   spec.add_development_dependency "mocha"
-  spec.add_development_dependency "rspec"
   spec.add_development_dependency "pry"
+  spec.add_development_dependency "rake"
+  spec.add_development_dependency "rspec"
+  spec.add_development_dependency "rubocop"
 end
