@@ -60,9 +60,9 @@ $ bundle exec cap staging deploy
 ### Set strategy
 Choose a strategy for deploying extracted code to the remote from the archive.
 - rsync
-- direct
+- direct (alpha)
 
-such as `set :s3_archive_strategy, :direct`.
+_e.g._ `set :s3_archive_strategy, :rsync`.
 
 
 #### strategy `rsync` (default)
@@ -70,7 +70,7 @@ such as `set :s3_archive_strategy, :direct`.
 
 This strategy behaves like the [capistrano-rsync](https://github.com/moll/capistrano-rsync) except downloading sources from S3 instead of GIT by default.
 
-#### strategy `direct`
+#### strategy `direct` (alpha)
 ![img_s3archive_to_local_to_remote](./img/s3_archive-direct.png)
 
 
