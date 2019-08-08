@@ -11,7 +11,6 @@ module Capistrano
         end
 
         def download
-          tmp_file = "#{target_file}.part"
           etag_file = File.join(download_dir, ".#{archive_object.key_basename}.etag")
           if backend.test("[ -f #{target_file} -a -f #{etag_file} ]") &&
              backend.capture(:cat, etag_file) == archive_object.etag
@@ -19,8 +18,8 @@ module Capistrano
           else
             backend.info "Download s3://#{archive_object.bucket}/#{archive_object.key} to #{target_file}"
             backend.execute(:mkdir, "-p", download_dir)
-            backend.execute(:aws, *['s3api', 'get-object', "--bucket #{archive_object.bucket}", "--key #{archive_object.key}", archive_object.version_id ? "--version-id #{archive_object.version_id}" : nil, tmp_file].compact)
-            backend.execute(:mv, tmp_file, target_file)
+            backend.execute(:aws, *['s3api', 'get-object', "--bucket #{archive_object.bucket}", "--key #{archive_object.key}", archive_object.version_id ? "--version-id #{archive_object.version_id}" : nil, target_file].compact)
+
             backend.execute(:echo, "-n", "'#{archive_object.etag}'", "|tee", etag_file)
           end
         end
@@ -36,7 +35,7 @@ module Capistrano
         end
 
         def target_file
-          basename = [archive_object.key_basename, archive_object.version_id].join('?')
+          basename = [archive_object.key_basename, archive_object.version_id].join('__')
           File.join(download_dir, basename)
         end
       end
