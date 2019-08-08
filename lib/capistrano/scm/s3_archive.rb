@@ -30,7 +30,7 @@ module Capistrano
         set_if_empty :s3_archive_strategy, :rsync
         set_if_empty :s3_archive_object_version_id, nil
 
-        # strategy direct
+        # strategy direct (alpha)
         set_if_empty :s3_archive_remote_cache_dir, -> { File.join(shared_path, "archives") }
 
         # strategy rsync
@@ -108,7 +108,7 @@ module Capistrano
           rsync_ssh_options = []
           rsync_ssh_options << dest.ssh_key_option unless dest.ssh_key_option.empty?
           rsync_ssh_options.concat fetch(:s3_archive_remote_rsync_ssh_options)
-          rsync_options << "-e 'ssh #{rsync_ssh_options}'" unless rsync_ssh_options.empty?
+          rsync_options << "-e 'ssh #{rsync_ssh_options.join(' ')}'" unless rsync_ssh_options.empty?
           rsync_options << "#{dest.login_user_at}#{dest.hostname}:#{rsync_cache_dir}"
         end
 
