@@ -1,5 +1,5 @@
 module Capistrano
   module S3Archive
-    VERSION = "0.9.9"
+    VERSION = "1.0.0.beta".freeze
   end
 end

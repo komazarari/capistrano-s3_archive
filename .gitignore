@@ -7,9 +7,8 @@
 /pkg/
 /spec/reports/
 /tmp/
+/vendor
 
-.vagrant
-/vagrant_example/Gemfile.lock
-/vagrant_example/.bundle/
-/vagrant_example/vendor/
-/vagrant_example/tmp/
+/example/vendor
+/example/tmp/
+/example/log/
