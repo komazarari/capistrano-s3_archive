@@ -1,0 +1,13 @@
+# frozen_string_literal: true
+
+source "https://rubygems.org"
+
+git_source(:github) {|repo_name| "https://github.com/#{repo_name}" }
+
+gem "capistrano-s3_archive", path: "../"
+
+### local stage exapmle
+gem "capistrano-locally"
+
+### debug
+gem "pry"
