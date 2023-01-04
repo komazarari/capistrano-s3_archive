@@ -51,7 +51,7 @@ module Capistrano
           return if downloaded_files.count <= keep
 
           remove_keys = (downloaded_files - downloaded_files.last(keep)).map { |f| File.basename(f, '.*') }.flat_map { |f| ["#{f}*", ".#{f}*"] }
-          to_be_removes = Dir.glob(remove_keys, base: download_dir)
+          to_be_removes = Dir.glob(remove_keys, base: download_dir).map { |f| File.join(download_dir, f) }
 
           remove(to_be_removes, force: true, verbose: true)
         end
