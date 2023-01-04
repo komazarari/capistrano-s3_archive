@@ -47,11 +47,13 @@ module Capistrano
         end
 
         def cleanup(keep: 0)
-          downloaded_files = Dir.glob(download_dir).sort_by(&File.method(:mtime))
+          downloaded_files = Dir.glob(File.join(download_dir, '*')).sort_by(&File.method(:mtime))
           return if downloaded_files.count <= keep
 
-          to_be_removes = (downloaded_files - downloaded_files.last(keep)).flat_map { |f| [f, ".#{f}.etag"] }
-          remove(to_be_removes, force: true)
+          remove_keys = (downloaded_files - downloaded_files.last(keep)).map { |f| File.basename(f, '.*') }.flat_map { |f| ["#{f}*", ".#{f}*"] }
+          to_be_removes = Dir.glob(remove_keys, base: download_dir)
+
+          remove(to_be_removes, force: true, verbose: true)
         end
 
         def target_file
